@@ -1113,7 +1113,7 @@ static void dbsqliteRegExp(sqlite3_context *context, int argc, const char **argv
                   NSRelationshipDescription *rel = [rels objectForKey:key];
                   if([key isEqualToString:relName]) {
                     NSString *destEnt = [self tableNameForEntity:[rel destinationEntity]];
-                    joinedTables = [NSString stringWithFormat:@"%@, %@", joinedTables, destEnt];
+               //     joinedTables = [NSString stringWithFormat:@"%@, %@", joinedTables, destEnt];
                     order = [NSString stringWithFormat:@" ORDER BY %@.%@", destEnt, relField];
                     // TODO: Add back in ASC and DESC here
                   }
@@ -1122,8 +1122,16 @@ static void dbsqliteRegExp(sqlite3_context *context, int argc, const char **argv
               order = [NSString stringWithFormat:@" ORDER BY %@", [columns componentsJoinedByString:@", "]];
             }
         }
-        
-        
+    }
+    
+    // Come up with the joined table list
+    // TODO: Redundant code with order relations
+    NSDictionary *rels = [entity relationshipsByName];
+    for(id key in rels) {
+        NSLog(@"key=%@", key);
+        NSRelationshipDescription *rel = [rels objectForKey:key];
+        NSString *destEnt = [self tableNameForEntity:[rel destinationEntity]];
+        joinedTables = [NSString stringWithFormat:@"%@, %@", joinedTables, destEnt];
     }
     
     return [NSDictionary dictionaryWithObjects:
@@ -1518,10 +1526,27 @@ static void dbsqliteRegExp(sqlite3_context *context, int argc, const char **argv
             value = [expression keyPath];
         }
         NSEntityDescription *entity = [request entity];
-        NSDictionary *properties = [entity propertiesByName];
-        id property = [properties objectForKey:value];
-        if ([property isKindOfClass:[NSRelationshipDescription class]]) {
-            value = [self foreignKeyColumnForRelationship:property];
+        NSString* expr = [expression description];
+        // Grab out the relationship if in two parts
+        NSArray *array = [expr componentsSeparatedByString:@"."];
+        if ( [array count] > 1) {
+          NSString* relName = [array objectAtIndex:0];
+          NSString* relField = [array objectAtIndex:1];
+          NSDictionary *rels = [entity relationshipsByName];
+          for(id key in rels) {
+            NSLog(@"key=%@", key);
+            NSRelationshipDescription *rel = [rels objectForKey:key];
+            if([key isEqualToString:relName]) {
+                NSString *destEnt = [self tableNameForEntity:[rel destinationEntity]];
+                value = [NSString stringWithFormat:@"%@.%@", destEnt, relField];
+            }
+          }
+        } else {
+          NSDictionary *properties = [entity propertiesByName];
+          id property = [properties objectForKey:value];
+          if ([property isKindOfClass:[NSRelationshipDescription class]]) {
+              value = [self foreignKeyColumnForRelationship:property];
+          }
         }
         *operand = value;
     }
