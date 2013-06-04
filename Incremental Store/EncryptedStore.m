@@ -1081,7 +1081,8 @@ static void dbsqliteRegExp(sqlite3_context *context, int argc, const char **argv
     NSString *order = @"";
     NSString *table = [self tableNameForEntity:entity];
     NSString *joinedTables = table;
-    NSArray *keys = [NSArray arrayWithObjects:@"table",@"joinedTables", @"order", nil];
+    NSString *joinLogic = @"";
+    NSArray *keys = [NSArray arrayWithObjects:@"table",@"joinedTables", @"order",@"joinLogic", nil];
     
     NSMutableArray *columns = [NSMutableArray arrayWithCapacity:[descriptors count]];
     [descriptors enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
@@ -1128,14 +1129,17 @@ static void dbsqliteRegExp(sqlite3_context *context, int argc, const char **argv
     // TODO: Redundant code with order relations
     NSDictionary *rels = [entity relationshipsByName];
     for(id key in rels) {
-        NSLog(@"key=%@", key);
         NSRelationshipDescription *rel = [rels objectForKey:key];
+        NSString* relName = [rel name];
         NSString *destEnt = [self tableNameForEntity:[rel destinationEntity]];
         joinedTables = [NSString stringWithFormat:@"%@, %@", joinedTables, destEnt];
+        NSString* tmpJoinLogic = [NSString stringWithFormat:@"%@.%@_id == %@.id", [self tableNameForEntity:entity], relName, destEnt ];
+        if([joinLogic isEqualToString:@""]) joinLogic = tmpJoinLogic;
+        else joinLogic = [NSString stringWithFormat:@"%@ AND %@", joinLogic, tmpJoinLogic];
     }
-    
+    NSLog(joinLogic);
     return [NSDictionary dictionaryWithObjects:
-            [NSArray arrayWithObjects:table,joinedTables,order,nil] forKeys:keys];
+            [NSArray arrayWithObjects:table,joinedTables,order,joinLogic,nil] forKeys:keys];
 }
 
 - (NSString *)columnsClauseWithProperties:(NSArray *)properties {
