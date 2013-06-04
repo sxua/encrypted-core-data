@@ -147,18 +147,24 @@ static NSString * const EncryptedStoreMetadataTableName = @"meta";
         NSEntityDescription *entity = [fetchRequest entity];
         NSFetchRequestResultType type = [fetchRequest resultType];
         NSMutableArray *results = [NSMutableArray array];
-        //NSString *joinedTables = table;
         NSDictionary *condition = [self whereClauseWithFetchRequest:fetchRequest];
         NSDictionary *ordering = [self orderClause:fetchRequest:entity];
         NSString *limit = ([fetchRequest fetchLimit] > 0 ? [NSString stringWithFormat:@" LIMIT %ld", (unsigned long)[fetchRequest fetchLimit]] : @"");
+        NSString *joinedTables = [ordering objectForKey:@"joinedTables"];
+        
+        // Merge the conditions with the joining logic
+        NSString* whereClause = [condition objectForKey:@"query"];
+        NSString* joinLogic = [ordering objectForKey:@"joinLogic"];
+        if([whereClause isEqualToString:@""]) joinedTables = [self tableNameForEntity:entity];
+        else if (![joinLogic isEqualToString:@""]) whereClause = [NSString stringWithFormat:@	"%@ AND %@", whereClause, joinLogic];
         
         // return objects or ids
         if (type == NSManagedObjectResultType || type == NSManagedObjectIDResultType) {
             NSString *string = [NSString stringWithFormat:
                                 @"SELECT %@.ID FROM %@%@%@%@;",
                                 [ordering objectForKey:@"table"],
-                                [ordering objectForKey:@"joinedTables"],
-                                [condition objectForKey:@"query"],
+                                joinedTables,
+                                whereClause,
                                 [ordering objectForKey:@"order"],
                                 limit];
          
@@ -1133,7 +1139,7 @@ static void dbsqliteRegExp(sqlite3_context *context, int argc, const char **argv
         NSString* relName = [rel name];
         NSString *destEnt = [self tableNameForEntity:[rel destinationEntity]];
         joinedTables = [NSString stringWithFormat:@"%@, %@", joinedTables, destEnt];
-        NSString* tmpJoinLogic = [NSString stringWithFormat:@"%@.%@_id == %@.id", [self tableNameForEntity:entity], relName, destEnt ];
+        NSString* tmpJoinLogic = [NSString stringWithFormat:@"%@.%@_id = %@.id", [self tableNameForEntity:entity], relName, destEnt ];
         if([joinLogic isEqualToString:@""]) joinLogic = tmpJoinLogic;
         else joinLogic = [NSString stringWithFormat:@"%@ AND %@", joinLogic, tmpJoinLogic];
     }
