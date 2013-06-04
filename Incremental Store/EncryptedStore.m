@@ -153,10 +153,12 @@ static NSString * const EncryptedStoreMetadataTableName = @"meta";
         NSString *joinedTables = [ordering objectForKey:@"joinedTables"];
         
         // Merge the conditions with the joining logic
+        // TODO: Would probably be smarter to just check if all parts are referencing one table or a relation
         NSString* whereClause = [condition objectForKey:@"query"];
         NSString* joinLogic = [ordering objectForKey:@"joinLogic"];
-        if([whereClause isEqualToString:@""]) joinedTables = [self tableNameForEntity:entity];
-        else if (![joinLogic isEqualToString:@""]) whereClause = [NSString stringWithFormat:@	"%@ AND %@", whereClause, joinLogic];
+        NSString* orderStmt = [ordering objectForKey:@"order"];
+        if([whereClause length] == 0) joinedTables = [self tableNameForEntity:entity];
+        else if ([joinLogic length] > 0) whereClause = [NSString stringWithFormat:@	"%@ AND %@", whereClause, joinLogic];
         
         // return objects or ids
         if (type == NSManagedObjectResultType || type == NSManagedObjectIDResultType) {
@@ -165,7 +167,7 @@ static NSString * const EncryptedStoreMetadataTableName = @"meta";
                                 [ordering objectForKey:@"table"],
                                 joinedTables,
                                 whereClause,
-                                [ordering objectForKey:@"order"],
+                                orderStmt,
                                 limit];
          
             sqlite3_stmt *statement = [self preparedStatementForQuery:string];
