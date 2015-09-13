@@ -1,6 +1,17 @@
-# Encrypted Core Data SQLite Store
+# Encrypted Core Data SQLite Store [![Build Status](https://travis-ci.org/project-imas/encrypted-core-data.svg?branch=master)](https://travis-ci.org/project-imas/encrypted-core-data)[![analytics](http://www.google-analytics.com/collect?v=1&t=pageview&_s=1&dl=https%3A%2F%2Fgithub.com%2Fproject-imas%2Fencrypted-core-data&_u=MAC~&cid=1757014354.1393964045&tid=UA-38868530-1)]()
+
 
 Provides a Core Data store that encrypts all data that is persisted.  Besides the initial setup, the usage is exactly the same as Core Data and can be used in existing projects that use Core Data.
+
+# What's New in ECD 2.0 (as of 6/20/14)
+- Many to Many relationship support 
+- Upgraded to SqlCipher v3.1.0 
+- Moved away from OpenSSL to Apple's, FIPS compliant, CommonCrypto
+- Better unit test support
+- Better SQLite cache support
+- Support for more sort descriptors
+- Closed many of the outstanding issues
+- Tested working in iOS 6.0 - 7.1
 
 # Vulnerabilities Addressed
 
@@ -12,7 +23,6 @@ Provides a Core Data store that encrypts all data that is persisted.  Besides th
 
 # Project Setup
   * When creating the project make sure **Use Core Data** is selected
-  * Follow the [SQLCipher for iOS](http://sqlcipher.net/ios-tutorial/) setup guide
   * Switch into your project's root directory and checkout the encrypted-core-data project code
 ```
     cd ~/Documents/code/YourApp
@@ -22,18 +32,47 @@ Provides a Core Data store that encrypts all data that is persisted.  Besides th
   * Click on the top level Project item and add files ("option-command-a")
   * Navigate to **encrypted-core-data**, highlight **Incremental Store**, and click **Add**
 
+  * SQLCipher is added as a git submodule within ECD. A `git submodule init` and `git submodule update` should populate the sqlcipher submodule directory, where the `sqlcipher.xcodeproj` can be found and added to your project.
+  * To use CommonCrypto with SQLCipher in Xcode:
+    - add the compiler flags `-DSQLCIPHER_CRYPTO_CC` and `-DSQLITE_HAS_CODEC` under the sqlcipher project settings > Build Settings > Custom Compiler Flags > Other C Flags
+    - Under your application's project settings > Build Phases, add `sqlcipher` to Target Dependencies, and `libsqlcipher.a` and `Security.framework` to Link Binary With Libraries.
+    
+* _Note:_ Along with the move to CommonCrypto, we've updated the version of SQLCipher included as a submodule from v2.0.6 to v3.1.0. Databases created with v2.0.6 will not be able to be read directly by v3.1.0, and support for legacy database migration is not yet supported by ECD.
+
+# Installation via CocoaPod
+* If you don't already have CocoaPods installed, do `$ sudo gem install cocoapods` in your terminal. (See the [CocoaPods website](http://guides.cocoapods.org/using/getting-started.html#getting-started) for details.)
+* In your project directory, do `pod init` to create a Podfile.
+* Add `pod 'EncryptedCoreData', :git => 'https://github.com/project-imas/encrypted-core-data.git'` to your Podfile
+* Run `pod install`
+* In your application delegate source file (AppDelegate.m), add `#import "EncryptedStore.h"`
+
 # Using EncryptedStore
+
+EncryptedStore is known to work successfully on iOS versions 6.0 through 7.1.
+
+If you wish to set a custom cache size and/or custom database URL:
+create an NSDictionary to set the options for your EncryptedStore, replacing customPasscode, customCacheSize, and/or customDatabaseURL:
+```objc
+NSDictionary *options = @{ EncryptedStorePassphraseKey: (NSString *) customPasscode,
+                           EncryptedStoreCacheSize: (NSNumber *) customCacheSize,
+                           EncryptedStoreDatabaseLocation: (NSURL *) customDatabaseURL
+                           };
+```
 
 In your application delegate source file (i.e. AppDelegate.m) you should see
 ```objc
 NSPersistentStoreCoordinator *coordinator = [self persistentStoreCoordinator];
 ```
-replace that line with
+If you created an NSDictionary with custom options, replace that line with
 ```objc
-NSPersistentStoreCoordinator *coordinator = [EncryptedStore makeStore:[self managedObjectModel]:@"SOME_PASSWORD"];
+NSPersistentStoreCoordinator *coordinator = [EncryptedStore makeStoreWithOptions:options managedObjectModel:[self managedObjectModel]];
 ```
 
-Replacing **SOME_PASSWORD** with an actual password.
+Otherwise, replace that line with:
+```objc
+NSPersistentStoreCoordinator *coordinator = [EncryptedStore makeStore:[self managedObjectModel]:@"SOME_PASSCODE"];
+```
+making sure to replace "SOME_PASSCODE" with a passcode of your own.
 
 Also in the same file add an import for EncryptedStore.h:
 ```objc
@@ -46,9 +85,9 @@ If there are issues you can add `-com.apple.CoreData.SQLDebug 1` to see all stat
 
 - One-to-one relationships
 - One-to-many relationships
-- Many-to-many relationships
+- Many-to-Many relationships (NEW)
 - Predicates
-- Inherited entities (Thanks to [NachoMan](https://github.com/NachoMan/)) 
+- Inherited entities (Thanks to [NachoMan](https://github.com/NachoMan/))
 
 Missing features and known bugs are maintained on the [issue tracker](https://github.com/project-imas/encrypted-core-data/issues?state=open)
 
@@ -66,7 +105,7 @@ Below is the output of doing the unix *strings* command on a sample applications
 
 ## License
 
-Copyright 2012 The MITRE Corporation, All Rights Reserved.
+Copyright 2012 - 2014 The MITRE Corporation, All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this work except in compliance with the License.
@@ -79,7 +118,4 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
-[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/50cf88b71d3c78a0268ae42ea79d8951 "githalytics.com")](http://githalytics.com/project-imas/encrypted-core-data)
-
 

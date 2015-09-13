@@ -2,12 +2,15 @@
 //  ISDAppDelegate.m
 //  Incremental Store Demo
 //
-//  Created by Caleb Davenport on 8/29/12.
+// Copyright 2012 - 2014 The MITRE Corporation, All Rights Reserved.
 //
 
 #import "EncryptedStore.h"
 
 #import "ISDAppDelegate.h"
+
+// TOGGLE ECD ON = 1 AND OFF = 0
+#define USE_ENCRYPTED_STORE 1
 
 @implementation ISDAppDelegate
 
@@ -15,7 +18,7 @@
     static NSPersistentStoreCoordinator *coordinator = nil;
     static dispatch_once_t token;
     dispatch_once(&token, ^{
-        
+    
         // get the model
         NSManagedObjectModel *model = [NSManagedObjectModel mergedModelFromBundles:nil];
         
@@ -27,22 +30,43 @@
         NSURL *applicationSupportURL = [[fileManager URLsForDirectory:NSApplicationSupportDirectory inDomains:NSUserDomainMask] lastObject];
         [fileManager createDirectoryAtURL:applicationSupportURL withIntermediateDirectories:NO attributes:nil error:nil];
         NSURL *databaseURL = [applicationSupportURL URLByAppendingPathComponent:@"database.sqlite"];
+        NSError *error = nil;
+        
+//        [[NSFileManager defaultManager] removeItemAtURL:databaseURL error:&error];
+        
         NSDictionary *options = @{
             EncryptedStorePassphraseKey : @"DB_KEY_HERE",
-            NSMigratePersistentStoresAutomaticallyOption : @YES,
+//            EncryptedStoreDatabaseLocation : databaseURL,
+//            NSMigratePersistentStoresAutomaticallyOption : @YES,
             NSInferMappingModelAutomaticallyOption : @YES
         };
-        NSError *error = nil;
         NSPersistentStore *store = [coordinator
                                     addPersistentStoreWithType:EncryptedStoreType
                                     configuration:nil
                                     URL:databaseURL
                                     options:options
                                     error:&error];
-        NSAssert(store, @"Unable to add persistent store\n%@", error);
+//        coordinator = [EncryptedStore makeStoreWithOptions:options managedObjectModel:model];
+        
+        NSAssert(store, @"Unable to add persistent store!\n%@", error);
         
     });
     return coordinator;
+}
+
++ (NSPersistentStoreCoordinator *)persistentStoreCoordinator_CoreData {
+    NSError *error = nil;
+    NSURL *storeURL = [[[[NSFileManager defaultManager]
+                         URLsForDirectory:NSDocumentDirectory
+                         inDomains:NSUserDomainMask]
+                            lastObject]
+                                URLByAppendingPathComponent:@"cleardb.sqlite"];
+    
+    NSPersistentStoreCoordinator *coordinator = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:[NSManagedObjectModel mergedModelFromBundles:nil]];
+    [coordinator addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:nil error:&error];
+    
+    return coordinator;
+    
 }
 
 + (NSManagedObjectContext *)managedObjectContext {
@@ -50,7 +74,11 @@
     static dispatch_once_t token;
     dispatch_once(&token, ^{
         context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
+#if USE_ENCRYPTED_STORE
         [context setPersistentStoreCoordinator:[self persistentStoreCoordinator]];
+#else
+        [context setPersistentStoreCoordinator:[self persistentStoreCoordinator_CoreData]];
+#endif
     });
     return context;
 }
@@ -63,7 +91,7 @@
         NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:@"User"];
         NSUInteger count = [context countForFetchRequest:request error:nil];
         if (count == 0) {
-            NSArray *array = [NSArray arrayWithObjects:@"Caleb", @"Jon", @"Andrew", @"Marshall", nil];
+            NSArray *array = [NSArray arrayWithObjects:@"Gregg", @"Jon", @"Jase", @"Gavin", nil];
             [array enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
                 NSManagedObject *user = [NSEntityDescription insertNewObjectForEntityForName:@"User" inManagedObjectContext:context];
                 [user setValue:obj forKey:@"name"];

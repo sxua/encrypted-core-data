@@ -86,13 +86,11 @@
     self.cityField.text = self.bankInfo.city;
     self.zipField.text = [self.bankInfo.details.zip stringValue];
     self.stateField.text = self.bankInfo.state;
-    NSSet *tags = self.bankInfo.details.tags;
+    NSArray *tags = [self.bankInfo.details.tags allObjects];
     NSMutableArray *tagNamesArray = [[NSMutableArray alloc] initWithCapacity:tags.count];
     
     for (Tag *tag in tags) {
-        
         [tagNamesArray addObject:tag.name];
-        
     }
     
     self.tagsLabel.text = [tagNamesArray componentsJoinedByString:@","];
@@ -147,6 +145,7 @@
     self.bankInfo.city = self.cityField.text;
     self.bankInfo.details.zip = [NSNumber numberWithInt:[self.zipField.text intValue]];
     self.bankInfo.state = self.stateField.text;
+    self.bankInfo.details.closeDate = self.datePicker.date;
     
     NSError *error;
     if ([self.bankInfo.managedObjectContext hasChanges] && ![self.bankInfo.managedObjectContext save:&error]) {
